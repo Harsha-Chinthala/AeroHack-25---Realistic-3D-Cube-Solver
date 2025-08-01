@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AeroHack'25 - Realistic 3D Cube Solver</title>
+    <style>
+        :root {
+            --cube-size: 200px;
+            --sticker-size: 60px;
+            --sticker-gap: 5px;
+        }
+        body { 
+            font-family: system-ui, sans-serif; 
+            background: #1a1a1a; 
+            color: #f0f0f0; 
+            text-align: center; 
+            overflow: hidden; 
+            margin: 0;
+            padding-top: 20px;
+        }
+        .scene { 
+            width: var(--cube-size); 
+            height: var(--cube-size); 
+            margin: 40px auto; 
+            perspective: 1000px; 
+        }
+        .cube { 
+            width: 100%; 
+            height: 100%; 
+            position: relative; 
+            transform-style: preserve-3d; 
+            transform: rotateX(-30deg) rotateY(30deg); 
+        }
+        .face { 
+            display: grid; 
+            grid-template-columns: repeat(3, var(--sticker-size)); 
+            grid-template-rows: repeat(3, var(--sticker-size)); 
+            gap: var(--sticker-gap); 
+            padding: var(--sticker-gap); 
+            position: absolute; 
+            width: var(--cube-size); 
+            height: var(--cube-size); 
+            box-sizing: border-box; 
+            background: #111; 
+            border: 1px solid #444; 
+        }
+        .c-W { background-color: #ffffff; }
+        .c-G { background-color: #009b48; }
+        .c-R { background-color: #b71234; }
+        .c-B { background-color: #0046ad; }
+        .c-O { background-color: #ff5800; }
+        .c-Y { background-color: #ffd500; }
+        .face.up     { transform: rotateX(90deg) translateZ(calc(var(--cube-size) / 2)); }
+        .face.down   { transform: rotateX(-90deg) translateZ(calc(var(--cube-size) / 2)); }
+        .face.left   { transform: rotateY(-90deg) translateZ(calc(var(--cube-size) / 2)); }
+        .face.right  { transform: rotateY(90deg) translateZ(calc(var(--cube-size) / 2)); }
+        .face.front  { transform: rotateY(0deg) translateZ(calc(var(--cube-size) / 2)); }
+        .face.back   { transform: rotateY(180deg) translateZ(calc(var(--cube-size) / 2)); }
+        #controls button, #controls input { 
+            padding: 10px; 
+            font-size: 16px; 
+            margin: 5px; 
+            border-radius: 5px; 
+            border: none; 
+            background: #444;
+            color: #fff;
+            cursor: pointer;
+        }
+        #controls button:hover { background: #555; }
+        #status { 
+            margin-top: 20px; 
+            font-size: 1.2em; 
+            height: 30px; 
+            font-weight: bold; 
+        }
+    </style>
+</head>
+<body>
+    <h1>AeroHack'25 - Realistic 3D Cube Solver</h1>
+    <div class="scene">
+        <div class="cube" id="cube"></div>
+    </div>
+    <div id="controls">
+        <input type="text" id="scrambleInput" placeholder="e.g., R U R' U R U2 R'">
+        <button onclick="runScramble()">Scramble</button>
+        <button onclick="solve()">Solve!</button>
+    </div>
+    <div id="status">Ready.</div>
+
+    <script>
+        const CUBE_EL = document.getElementById('cube');
+        const STATUS_EL = document.getElementById('status');
+        // FIX #1: Use full names to match the CSS classes
+        const FACES = ['up', 'left', 'front', 'right', 'back', 'down'];
+        let state = "WWWWWWWWWGGGGGGGGGRRRRRRRRRBBBBBBBBBOOOOOOOOOYYYYYYYYY".split('');
+
+        const rotateFace = (faceIndex) => {
+            const temp = state.slice();
+            const faceOffset = faceIndex * 9;
+            const map = [6, 3, 0, 7, 4, 1, 8, 5, 2];
+            for (let i = 0; i < 9; i++) {
+                state[faceOffset + i] = temp[faceOffset + map[i]];
+            }
+        };
+
+        const MOVES = {
+            'U': () => {
+                rotateFace(0);
+                const temp = state.slice();
+                for (let i = 0; i < 3; i++) {
+                    state[18 + i] = temp[9 + i];   // L to F
+                    state[27 + i] = temp[18 + i];  // F to R
+                    state[36 + i] = temp[27 + i];  // R to B
+                    state[9 + i]  = temp[36 + i];  // B to L
+                }
+            },
+            'L': () => {
+                rotateFace(1);
+                const temp = state.slice();
+                const map = [[0, 36, 45, 18], [3, 39, 48, 21], [6, 42, 51, 24]];
+                for (let i = 0; i < 3; i++) {
+                    state[map[i][0]] = temp[map[i][3]]; state[map[i][1]] = temp[map[i][0]];
+                    state[map[i][2]] = temp[map[i][1]]; state[map[i][3]] = temp[map[i][2]];
+                }
+            },
+            'F': () => {
+                rotateFace(2);
+                const temp = state.slice();
+                const map = [[6, 27, 47, 17], [7, 30, 46, 14], [8, 33, 45, 11]];
+                for (let i = 0; i < 3; i++) {
+                    state[map[i][0]] = temp[map[i][3]]; state[map[i][1]] = temp[map[i][0]];
+                    state[map[i][2]] = temp[map[i][1]]; state[map[i][3]] = temp[map[i][2]];
+                }
+            },
+            'R': () => {
+                rotateFace(3);
+                const temp = state.slice();
+                const map = [[2, 20, 53, 44], [5, 23, 50, 41], [8, 26, 47, 38]];
+                for (let i = 0; i < 3; i++) {
+                    state[map[i][0]] = temp[map[i][1]]; state[map[i][1]] = temp[map[i][2]];
+                    state[map[i][2]] = temp[map[i][3]]; state[map[i][3]] = temp[map[i][0]];
+                }
+            },
+            'B': () => {
+                rotateFace(4);
+                const temp = state.slice();
+                const map = [[0, 9, 53, 35], [1, 12, 52, 32], [2, 15, 51, 29]];
+                for (let i = 0; i < 3; i++) {
+                    state[map[i][0]] = temp[map[i][1]]; state[map[i][1]] = temp[map[i][2]];
+                    state[map[i][2]] = temp[map[i][3]]; state[map[i][3]] = temp[map[i][0]];
+                }
+            },
+            'D': () => {
+                rotateFace(5);
+                const temp = state.slice();
+                for (let i = 0; i < 3; i++) {
+                    state[18 + 6 + i] = temp[9 + 6 + i];    // L to F
+                    state[27 + 6 + i] = temp[18 + 6 + i];   // F to R
+                    state[36 + 6 + i] = temp[27 + 6 + i];   // R to B
+                    state[9 + 6 + i]  = temp[36 + 6 + i];   // B to L
+                }
+            },
+        };
+
+        ['U', 'L', 'F', 'R', 'B', 'D'].forEach(m => {
+            MOVES[m + "'"] = () => { MOVES[m](); MOVES[m](); MOVES[m](); };
+            MOVES[m + '2'] = () => { MOVES[m](); MOVES[m](); };
+        });
+
+        function generateCubeHTML() {
+            CUBE_EL.innerHTML = FACES.map((face, i) =>
+                `<div class="face ${face}">
+                    ${Array.from({length: 9}).map((_, j) => `<div class="sticker" id="s-${i}-${j}"></div>`).join('')}
+                </div>`
+            ).join('');
+        }
+
+        function render() {
+            state.forEach((color, index) => {
+                const face = Math.floor(index / 9);
+                const sticker = index % 9;
+                document.getElementById(`s-${face}-${sticker}`).className = `sticker c-${color}`;
+            });
+        }
+
+        function applyMoves(moves) {
+            moves.forEach(move => {
+                // FIX #2: Convert moves to uppercase to make input case-insensitive
+                const upperMove = move.toUpperCase();
+                if (MOVES[upperMove]) MOVES[upperMove]();
+            });
+            render();
+        }
+
+        function runScramble() {
+            const scrambleText = document.getElementById('scrambleInput').value.trim();
+            if (!scrambleText) return;
+            state = "WWWWWWWWWGGGGGGGGGRRRRRRRRRBBBBBBBBBOOOOOOOOOYYYYYYYYY".split('');
+            applyMoves(scrambleText.split(' '));
+            STATUS_EL.innerText = 'Scrambled. Ready to solve.';
+        }
+
+        async function solve() {
+            STATUS_EL.innerText = 'Solving... (Using mock solution)';
+            const scrambleText = document.getElementById('scrambleInput').value.trim();
+            if (!scrambleText) {
+                STATUS_EL.innerText = 'Please enter a scramble first.';
+                return;
+            }
+            const reversedMoves = scrambleText.split(' ').map(move => {
+                const upperMove = move.toUpperCase();
+                if (upperMove.includes("'")) return upperMove.slice(0, 1);
+                if (upperMove.includes("2")) return upperMove;
+                return upperMove + "'";
+            }).reverse();
+            
+            animateSolution(reversedMoves);
+        }
+
+        function animateSolution(moves) {
+            let i = 0;
+            STATUS_EL.innerText = `Found solution! Animating ${moves.length} moves...`;
+            const interval = setInterval(() => {
+                if (i >= moves.length) {
+                    clearInterval(interval);
+                    STATUS_EL.innerText = 'Solved!';
+                    return;
+                }
+                const move = moves[i];
+                STATUS_EL.innerText = `Move ${i + 1}/${moves.length}: ${move}`;
+                if (MOVES[move]) {
+                    MOVES[move]();
+                    render();
+                }
+                i++;
+            }, 400);
+        }
+
+        generateCubeHTML();
+        render();
+    </script>
+</body>
+</html>
