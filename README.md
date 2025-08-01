@@ -47,5 +47,5 @@ To run this project locally, please follow these steps:
 ### 2. Installation
 Clone the repository and navigate to the project directory:
 ```bash
-git clone [your-repo-link]
+git clone https://github.com/Harsha-Chinthala/AeroHack-25---Realistic-3D-Cube-Solver.git
 cd kociemba_solver
